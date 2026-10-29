@@ -10,15 +10,32 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentHash = '' }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
+    // Mount trigger for smooth entrance slide-down
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      const currentScroll = window.scrollY;
+      setIsScrolled(currentScroll > 20);
+
+      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalScroll > 0) {
+        const progress = Math.min(100, Math.max(0, (currentScroll / totalScroll) * 100));
+        setScrollProgress(progress);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -61,69 +78,105 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentHash = '' }) 
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out ${
+        mounted || prefersReducedMotion ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+      } ${
         isScrolled
-          ? 'bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-sm shadow-slate-200/50 py-3.5'
-          : 'bg-white/80 backdrop-blur-sm border-b border-slate-200/50 py-4.5'
+          ? 'bg-white/90 backdrop-blur-xl border-b border-slate-200/90 shadow-md shadow-slate-200/40 py-3'
+          : 'bg-white/70 backdrop-blur-md border-b border-slate-200/40 py-4.5'
       }`}
     >
+      {/* Ambient background soft light glow */}
+      <div 
+        className={`absolute inset-0 -z-10 bg-gradient-to-r from-blue-500/[0.03] via-sky-500/[0.04] to-amber-500/[0.02] transition-opacity duration-700 pointer-events-none ${
+          isScrolled ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-hidden="true"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
-          {/* Zone 1: Brand Wordmark */}
+          {/* Zone 1: Brand Wordmark with Animated Pulsing Beacon */}
           <a
             href="#home"
             onClick={(e) => handleLinkClick('#home', e)}
-            className="group flex items-center gap-1.5 text-xl font-bold tracking-tight text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md transition-transform duration-200 hover:scale-[1.02]"
+            className="group flex items-center gap-2 text-xl font-bold tracking-tight text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg transition-transform duration-200 hover:scale-[1.02]"
             aria-label="SameerDev Home"
           >
             <span className="font-extrabold tracking-tight">
               Sameer<span className="text-blue-600 transition-colors duration-200 group-hover:text-blue-700">Dev</span>
             </span>
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]" aria-hidden="true" />
+
+            {/* Glowing Radar Beacon */}
+            <span className="relative flex h-2.5 w-2.5 ml-0.5" aria-hidden="true">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+            </span>
           </a>
 
-          {/* Zone 2: Desktop Navigation Links */}
+          {/* Zone 2: Desktop Navigation Links with Animated Floating Island / Pill */}
           <nav
-            className="hidden md:flex items-center gap-8 text-sm font-medium"
+            className="hidden md:flex items-center gap-1 p-1 rounded-2xl bg-slate-100/70 border border-slate-200/70 backdrop-blur-md relative"
             aria-label="Primary Navigation"
+            onMouseLeave={() => setHoveredIndex(null)}
           >
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS.map((item, index) => {
               const isActive = currentHash === item.href || (item.href === '#home' && !currentHash);
+              const isHovered = hoveredIndex === index;
+
               return (
                 <a
                   key={item.label}
                   href={item.href}
+                  onMouseEnter={() => setHoveredIndex(index)}
                   onClick={(e) => handleLinkClick(item.href, e)}
-                  className={`relative py-1.5 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm group ${
+                  className={`relative px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 z-10 ${
                     isActive
                       ? 'text-blue-600 font-semibold'
-                      : 'text-slate-600 hover:text-blue-600'
+                      : 'text-slate-600 hover:text-slate-950'
                   }`}
                 >
-                  <span>{item.label}</span>
-                  {/* Subtle hover underline */}
-                  <span
-                    className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full transition-all duration-200 ${
-                      isActive
-                        ? 'bg-blue-600 scale-x-100'
-                        : 'bg-slate-300 scale-x-0 group-hover:scale-x-75 group-hover:bg-blue-500/70'
-                    }`}
-                    aria-hidden="true"
-                  />
+                  {/* Floating Active Pill */}
+                  {isActive && (
+                    <span 
+                      className="absolute inset-0 rounded-xl bg-white border border-slate-200/90 shadow-xs -z-10 transition-all duration-200" 
+                      aria-hidden="true" 
+                    />
+                  )}
+
+                  {/* Floating Hover Pill */}
+                  {isHovered && !isActive && (
+                    <span 
+                      className="absolute inset-0 rounded-xl bg-slate-200/60 -z-10 transition-all duration-150 animate-in fade-in duration-150" 
+                      aria-hidden="true" 
+                    />
+                  )}
+                  
+                  <span className="flex items-center gap-1.5">
+                    {item.label}
+                    {isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.7)] animate-pulse" />
+                    )}
+                  </span>
                 </a>
               );
             })}
           </nav>
 
-          {/* Zone 3: Primary Action CTA (Blue modern button) */}
+          {/* Zone 3: Primary Action CTA with Animated Light Sweep Shimmer */}
           <div className="hidden md:flex items-center gap-4">
             <a
               href={PRIMARY_CTA.href}
               onClick={(e) => handleLinkClick(PRIMARY_CTA.href, e)}
-              className="group relative inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl btn-micro-fx shadow-md shadow-blue-600/20 hover:shadow-blue-600/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white whitespace-nowrap"
+              className="group relative inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl btn-micro-fx shadow-md shadow-blue-600/20 hover:shadow-blue-600/40 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 whitespace-nowrap"
             >
-              <span>{PRIMARY_CTA.label}</span>
-              <ArrowUpRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              {/* Shimmer light sweep animation */}
+              <span 
+                className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none animate-shimmer-sweep"
+                aria-hidden="true" 
+              />
+              <span className="relative z-10">{PRIMARY_CTA.label}</span>
+              <ArrowUpRight className="w-4 h-4 relative z-10 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
           </div>
 
@@ -147,11 +200,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentHash = '' }) 
         </div>
       </div>
 
+      {/* Animated Scroll Progress Bar at the bottom edge of header */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-slate-200/40 overflow-hidden pointer-events-none">
+        <div
+          className="h-full bg-gradient-to-r from-blue-600 via-sky-400 to-amber-400 transition-all duration-150 ease-out shadow-[0_0_10px_rgba(56,189,248,0.8)]"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
           id="mobile-navigation-menu"
-          className="md:hidden fixed inset-x-0 top-[65px] bottom-0 bg-white/98 backdrop-blur-xl border-t border-slate-200 z-40 px-6 py-8 flex flex-col justify-between overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl"
+          className="md:hidden fixed inset-x-0 top-[57px] bottom-0 bg-white/98 backdrop-blur-2xl border-t border-slate-200 z-40 px-6 py-8 flex flex-col justify-between overflow-y-auto animate-in fade-in slide-in-from-top-3 duration-250 shadow-2xl"
           role="dialog"
           aria-modal="true"
           aria-label="Mobile Navigation"
@@ -167,13 +228,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentHash = '' }) 
                   style={{ animationDelay: `${idx * 40}ms` }}
                   className={`text-base font-medium py-3 px-3.5 rounded-xl transition-all flex items-center justify-between ${
                     isActive
-                      ? 'text-blue-600 bg-blue-50 font-semibold border border-blue-200'
+                      ? 'text-blue-600 bg-blue-50 font-semibold border border-blue-200 shadow-xs'
                       : 'text-slate-700 hover:text-blue-600 hover:bg-slate-50'
                   }`}
                 >
                   <span>{item.label}</span>
                   {isActive && (
-                    <span className="w-2 h-2 rounded-full bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.6)]" aria-hidden="true" />
+                    <span className="w-2 h-2 rounded-full bg-blue-600 shadow-[0_0_6px_rgba(37,99,235,0.6)] animate-pulse" aria-hidden="true" />
                   )}
                 </a>
               );
@@ -184,10 +245,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentHash = '' }) 
             <a
               href={PRIMARY_CTA.href}
               onClick={(e) => handleLinkClick(PRIMARY_CTA.href, e)}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl btn-micro-fx shadow-lg shadow-blue-600/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="group relative w-full flex items-center justify-center gap-2 px-6 py-3.5 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl btn-micro-fx shadow-lg shadow-blue-600/25 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              <span>{PRIMARY_CTA.label}</span>
-              <ArrowUpRight className="w-4 h-4" />
+              <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none animate-shimmer-sweep" />
+              <span className="relative z-10">{PRIMARY_CTA.label}</span>
+              <ArrowUpRight className="w-4 h-4 relative z-10" />
             </a>
           </div>
         </div>
